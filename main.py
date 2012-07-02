@@ -53,7 +53,7 @@ class Welcome(webapp2.RequestHandler):
 			#send dummy text 
 			voice=Voice()
 			voice.login("evan.valentini@gmail.com", "robots25")
-			voice.send_sms(5512062642, "I am a machine")
+			voice.send_sms(2015624311, "I am a machine")
 			self.response.out.write("message sent")		
 		else:
 			self.redirect('/login')
