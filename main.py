@@ -1,5 +1,6 @@
 from voice import Voice
 from util import input 
+#import sms
 import webapp2
 import settings
 import os
@@ -50,9 +51,9 @@ class Welcome(webapp2.RequestHandler):
 		admin_pwd=self.request.cookies.get("admin_pwd")
 		if admin_pwd==VALID_PWD:
 			#send dummy text 
-#			voice=Voice()
-#			voice.login("evan.valentini@gmail.com", "robots25")
-#			voice.send_sms(5512062642, "I am a machine")
+			voice=Voice()
+			voice.login("evan.valentini@gmail.com", "robots25")
+			voice.send_sms(5512062642, "I am a machine")
 			self.response.out.write("message sent")		
 		else:
 			self.redirect('/login')
