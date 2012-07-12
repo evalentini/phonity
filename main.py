@@ -8,6 +8,8 @@ from voice import Voice
 from util import input 
 #import jinja2 template library 
 import jinja2
+#import datastore 
+from google.appengine.ext import db
 
 #import python standard distribution libraries 
 import webapp2
@@ -21,6 +23,12 @@ import re
 template_dir=os.path.join(os.path.dirname(__file__), 'templates')
 jinja2_env=jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), autoescape=True)
 
+##define database objects###################################################################################
+###########################################################################################################
+class Users(db.Model):
+	phone=db.IntegerProperty
+	pwd=db.StringProperty
+
 ##define helper functions###################################################################################
 ############################################################################################################
 
@@ -33,36 +41,79 @@ def text(message=None, number=None, email="evan.valentini@gmail.com", pwd="robot
 	voice.login(email, pwd)
 	voice.send_sms(number, message)
 	
+##define global variables#################################################################################
+##########################################################################################################
+
 VALID_PWD="shabanaSnuggle"
+#placeholder until we code random pin generator and store randomly generated pin in datastore
+GLOBAL_PIN="1592"
 
 
-###SIGN UP PAGE HANDLER###################################################################################################################################################################################
+###PAGE HANDLER HELPERS#################################################################################################################################################################################
 
-class Signup(webapp2.RequestHandler):
+class PageHandler(webapp2.RequestHandler):
+	def check_admin_login(self):
+		admin_pwd=self.request.cookies.get("admin_pwd")
+		if admin_pwd:
+			if admin_pwd!=VALID_PWD:
+				self.redirect('/login')
+		else:
+			self.redirect('/login')
+
+
+#######PAGE HANDLERS########################################################################################
+
+class Signup(PageHandler):
 	def get(self):
+		#check if we are logged in 
+		nil=PageHandler.check_admin_login(self)
 		self.response.out.write(render("signup.html"))
 	
 	def post(self):
+		#check for login 
+		nil=PageHandler.check_admin_login(self)
 		#pull phone number entered
 		phone_number=self.request.get("phone_number")
-		admin_pwd=self.request.cookies.get("admin_pwd")
-		pwd_check= admin_pwd==VALID_PWD
-		#confirm admin password
-		if pwd_check==False:
-			self.redirect('/login') 
 		#regex verify phone number  
 		#should be 10 digits
 		PHONE_RE=re.compile(r'[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
 		if PHONE_RE.match(phone_number):
+			#store phone # in a cookie 
+			self.response.set_cookie("phone", phone_number)
+			
 			#generate random pin
-			pin="1592"
+			pin=GLOBAL_PIN
 			#text pin to entered number
 			nil=text("Your pin is "+pin, phone_number) 
+			self.redirect("/confirm")
 		else:
 			self.response.out.write(render("signup.html"))
 			#add error message later	
-				
 
+#confirm user provided valid mobile number @ signup by prompting for pin
+class Confirm(PageHandler):
+	def get(self):
+		nil=PageHandler.check_admin_login(self)
+		self.response.out.write(render("confirm.html"))
+
+	def post(self):
+		#check for login 
+		nil=PageHandler.check_admin_login(self)
+		#get the pin entered 
+		pin=self.request.get("pin")
+		#check for pin match  
+		if pin==GLOBAL_PIN:
+			#save the mobile # and the password to the database
+			#get the password, mobile #
+			pwd=self.request.get("pwd")
+			phone=self.request.cookies.get("phone")
+			user=Users(phone=phone, pwd=pwd)
+			user.put()
+			self.redirect('/')
+		else:
+			self.response.out.write(render("confirm.html"))
+			#add error message later
+			
 class Login(webapp2.RequestHandler):
 
 	def get(self):
@@ -82,6 +133,7 @@ class Welcome(webapp2.RequestHandler):
 		phone="""
 			<html>
 			<body>
+			This is the Main Page
 			<form method="post">
 				<input type="submit" value="text!">
 			</form>
@@ -108,7 +160,8 @@ class Welcome(webapp2.RequestHandler):
 
 app=webapp2.WSGIApplication([('/', Welcome),
 				('/login', Login),
-				('/signup', Signup)
+				('/signup', Signup),
+				('/confirm', Confirm)
 				], debug=True)
 
 
