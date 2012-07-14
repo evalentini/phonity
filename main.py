@@ -26,8 +26,8 @@ jinja2_env=jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), auto
 ##define database objects###################################################################################
 ###########################################################################################################
 class Users(db.Model):
-	phone=db.IntegerProperty
-	pwd=db.StringProperty
+	phone=db.IntegerProperty()
+	pwd=db.StringProperty()
 
 ##define helper functions###################################################################################
 ############################################################################################################
@@ -56,9 +56,9 @@ class PageHandler(webapp2.RequestHandler):
 		admin_pwd=self.request.cookies.get("admin_pwd")
 		if admin_pwd:
 			if admin_pwd!=VALID_PWD:
-				self.redirect('/login')
+				self.redirect('/admin_login')
 		else:
-			self.redirect('/login')
+			self.redirect('/admin_login')
 
 
 #######PAGE HANDLERS########################################################################################
@@ -97,8 +97,13 @@ class Confirm(PageHandler):
 		self.response.out.write(render("confirm.html"))
 
 	def post(self):
-		#check for login 
+		self.response.out.write("hello")
+		#check for admin login 
 		nil=PageHandler.check_admin_login(self)
+		#check for phone 
+		phone=self.request.cookies.get("phone")
+		if not phone:
+			self.redirect('/signup')
 		#get the pin entered 
 		pin=self.request.get("pin")
 		#check for pin match  
@@ -107,6 +112,7 @@ class Confirm(PageHandler):
 			#get the password, mobile #
 			pwd=self.request.get("pwd")
 			phone=self.request.cookies.get("phone")
+			phone=int(phone)
 			user=Users(phone=phone, pwd=pwd)
 			user.put()
 			self.redirect('/')
@@ -114,10 +120,33 @@ class Confirm(PageHandler):
 			self.response.out.write(render("confirm.html"))
 			#add error message later
 			
-class Login(webapp2.RequestHandler):
+class Login(PageHandler):
 
 	def get(self):
+		#check admin login for beta
+		nil=PageHandler.check_admin_login(self)
+		#render the login form 
 		self.response.out.write(render("login.html"))
+
+	def post(self):
+		#check admin login for beta
+		nil=PageHandler.check_admin_login(self)
+		#pull phone and password 
+		phone=self.request.get("phone")
+		pwd=self.request.get("pwd")
+		if phone and pwd:
+			#check whether we have right phone and pwd 
+			query="SELECT * FROM Users"
+			users=db.GqlQuery(query)
+			self.response.out.write(render("test.html", users=users))
+		else:
+		#add error message
+			self.redirect('/login')
+
+class AdminLogin(PageHandler):
+
+	def get(self):
+		self.response.out.write(render("admin_login.html"))
 
 	def post(self):
 		admin_pwd=self.request.get("admin_pwd")
@@ -128,40 +157,57 @@ class Login(webapp2.RequestHandler):
 			self.response.out.write("invalid password")
 	
 
-class Welcome(webapp2.RequestHandler):
+class Main(PageHandler):
+
 	def get(self):
-		phone="""
-			<html>
-			<body>
-			This is the Main Page
-			<form method="post">
-				<input type="submit" value="text!">
-			</form>
-			</body>
-			</html>"""
 		#check if logged in 
-		admin_pwd=self.request.cookies.get("admin_pwd")
-		if admin_pwd==VALID_PWD:
-			self.response.out.write(phone)
-		else:
-			self.redirect('/login')	
+		nil=PageHandler.check_admin_login(self)
+		#render the main template 
+		self.response.out.write(render("main.html"))	
+		
 
-	def post(self):
+class ViewContacts(PageHandler):
+	
+	def get(self):
 		#check if logged in 
-		admin_pwd=self.request.cookies.get("admin_pwd")
-		if admin_pwd==VALID_PWD:
-			#send dummy text 
-			voice=Voice()
-			voice.login("evan.valentini@gmail.com", "robots25")
-			voice.send_sms(7865533061, "I am a machine")
-			self.response.out.write("message sent")		
-		else:
-			self.redirect('/login')
+		nil=PageHandler.check_admin_login(self)
+		#render the view_contact template 
+		self.response.out.write(render("view_contacts.html"))
 
-app=webapp2.WSGIApplication([('/', Welcome),
-				('/login', Login),
+class AddContact(PageHandler):
+
+	def get(self):
+		#check if logged in 
+		nil=PageHandler.check_admin_login(self)
+		#rendner the add_contact template
+		self.response.out.write(render("add_contact.html"))
+		
+class EditCard(PageHandler):
+
+	def get(self):
+		#check if logged in 
+		nil=PageHandler.check_admin_login(self)
+		#rendner the add_contact template
+		self.response.out.write(render("edit_card.html"))
+
+class GetCSS(PageHandler):
+
+	def get(self):
+		#check if logged in 
+		nil=PageHandler.check_admin_login(self)
+		#render the main.css template
+		self.response.out.write(render("main.css"))
+
+
+app=webapp2.WSGIApplication([('/', Main),
+				('/admin_login', AdminLogin),
 				('/signup', Signup),
-				('/confirm', Confirm)
+				('/confirm', Confirm),
+				('/login', Login),
+				('/view_contacts', ViewContacts),
+				('/add_contact', AddContact),
+				('/edit_card', EditCard),
+				('/main.css', GetCSS)
 				], debug=True)
 
 
