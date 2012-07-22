@@ -1,17 +1,29 @@
-<html>
-<body>
-<form method="post">
-	<table>
-		<tr>
-			<td>Mobile Number: </td>
-			<td><input type="text" name="phone"></td>
-		</tr>
-		<tr>
-			<td>Password: </td>
-			<td><input type="text" name="pwd"></td>
-		</tr>
-	</table>
-	<input type="submit" value="Log In">
+{% extends "main.html" %}
+{% block navbar %} <!--dont show navbar --> {% endblock %}
+{% block content %}
+
+<form method="post" action="login">
+<div style="width: 450px; background: black; color: white; margin: 10 auto;">
+<table>
+<tr>
+	<td style="color: white;">mobile phone number: </td>
+	<td><input type="text" name="phone"></td>
+</tr>
+	<td style="color: white;">password: </td>
+	<td><input type="password" name="pwd"></td>
+</tr>
+</table>
+</div>
+<div style="width: 450px; margin: 10px auto; ">
+<input 
+	type="submit" 
+	value="log in" 
+	style="font-size: 120%; color: white; background: black;
+	 border: 0px; width: 100%; text-align: center; 
+	 padding: 10px; text-decoration: underline; ">
+
+</div>
 </form>
-</body>
-</html>
+<div class="error">{{error}}</div>
+<div class="error">dont have an account?  <a href="/signup">signup</a></div>
+{% endblock %}

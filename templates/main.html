@@ -3,18 +3,30 @@
 	<link href="main.css" rel="stylesheet" type="text/css">
 </head>
 <body>
+	<h1>phonity: never save another business card</h1>
+	<div class="login-area">
+		<a class="login-link" href="/signup">sign up</a>
+		|
+		<a class="login-link" href="/login">login</a>
+		|
+		<a class="login-link" href="/logout">logout</a>
+	</div>
+	{% block navbar %}	
 	<div class="navbar">
 		<span class="nav_element">
-			<a href="/view_contacts" class="nav_link"> View Contacts</a>
+			<a href="/view_contacts" class="nav_link"> view contacts</a>
 		</span>
 		<span class="nav_element">
-			<a href="/add_contact" class="nav_link">Add Contact</a>
+			<a href="/add_contact" class="nav_link">add contact</a>
 		</span>
 		<span class="nav_element">
-			<a href="/edit_card" class="nav_link">Edit Card</a>
+			<a href="/edit_card" class="nav_link">edit card</a>
 		</span>
 	</div>
-	{% block content %}{% endblock %}
+	{% endblock %}
+	{% block content %}
+		{{content_override}}
+	{% endblock %}
 </body>
 </html>
 

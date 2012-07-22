@@ -1,3 +1,35 @@
 {% extends "main.html" %}
-{% block content %}View Contacts Stub{% endblock %}
+{% block content %}
+
+<style type="text/css">
+	.header-row {
+		text-decoration: none;
+		font-weight: bold;
+	}
+</style>
+<div style="max-width: 1000px; auto; margin: 0 auto;">
+<table valign="center">
+<tr>
+	<td class="header-row">full name-------------</td>
+	<td class="header-row">date connected--------</td>	
+	<td class="header-row">mobile phone----------</td>
+	<td class="header-row">linkedin profile------</td>
+	<td class="header-row">connection status-----</td>
+	<td class="header-row">change status---------</td>
+</tr>
+<tr>
+	<td>Evan Valentini</td>
+	<td>2012.07.15</td>
+	<td>312.919.6341</td>
+	<td>
+		<a href="http://www.linkedin.com/profile/view?id=15837759&locale=en_US&trk=tyah">linkedin profile</a>
+	</td>
+	<td>self</td>
+	<td>n/a</td>
+</tr>
+</table>
+</div>
+	
+
+{% endblock %}
 

@@ -1,3 +1,27 @@
 {% extends "main.html" %}
-{% block content %}Add Contact Stub{% endblock %}
+{% block content %}
+
+<form method="post">
+<div style="width: 500px; margin: 0 auto;">
+	<div style="float: left;">enter contact's number</div>
+	<div style="float: right;">
+		<input type="text" name="contact_phone">
+	</div>
+</div>
+<br>
+<div style="width: 500px; margin: 20px auto;">
+<input 
+	style=" width: 100%; background: black; 
+		border: 0px; color: white; 
+		font-size: 120%; text-decoration: underline;
+		padding: 10px; " 
+	type="submit" value="add contact">
+</div>
+</form>
+<div class="error">
+{{error}}
+</div>
+
+
+{% endblock %}
 

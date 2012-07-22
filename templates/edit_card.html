@@ -1,3 +1,45 @@
 {% extends "main.html" %}
-{% block content %}Edit Card Stub{% endblock %}
+{% block content %}
 
+<form method="post">
+<div style="width: 380px; margin: 0 auto;">
+<table>
+<tr>
+<td>
+mobile phone:
+</td>
+<td>
+<input type="text" disabled="disabled" value="{{phone}}">
+</td>
+</tr>
+<td>
+linkedin email: 
+</td>
+<td>
+<input type="text" value="{{email}}" name="email">
+</td>
+</tr>
+<tr>
+<td>
+full name:
+</td>
+<td>
+<input type="text" value="{{name}}" name="name">
+</td>
+</tr>
+</table>
+</div>
+<div style="width: 380px; margin: 0 auto;">
+<input 
+	style=" width: 100%; background: black; 
+		border: 0px; color: white; 
+		font-size: 120%; text-decoration: underline;
+		padding: 10px; " 
+	type="submit" value="save changes">
+</div>
+</form>
+<div class="error">
+{{error}}
+</div>
+
+{% endblock %}

@@ -1,60 +1,22 @@
+{% extends "main.html" %}
+{% block navbar %} <!--dont show navbar --> {% endblock %}
+{% block content %}
+		
+	<form method="post">
+	<div style="margin: 25px auto; background: black; width: 500px; color: white; border: 2px solid; border-color: black; ">
+		mobile phone number:
+	<input type="text" style="float: right;" name="phone_number" length="10">
+	<div style="clear: both;"></div>
+	</div> 
+	<div style="width: 500px; margin: 10 auto;"><input 
+		style="width: 100%; background: black; color: white; border: 0px; font-size: 130%; text-decoration: underline; padding: 5px;" 
+		type="submit" 
+		value="sign up">
+	</div>
+	</form>
 
-<style type="text/css">
-	.content {
-		margin: 0 auto;
-		background: white;
-		text-align: left;
-		width: 600px;
-	}
-	.phonity_title {
-		background: black;
-		color: white;
-		padding: 10px;
-		font-weight: bold;
-		margin: 0 auto;
-		margin-bottom: 25px;
-	}
-	.headline {
-		font-size: 150%;
-	}
-	.tagline {
-		font-size: 120%;
-	}
-	.sign_up_container {
-		margin: 0 auto;
-	}
-	.sign_up {
-		border: 5px-solid;
-		border-color: black;
-		/*border-color: gray;*/
-		/*border-radius: 15px;*/
-		margin-top: 25px;
-		width: 600px;
-		height: 50px;
-		background: black;
-		color: white;
-		text-align: center;
-		font-size: 150%;
-	}
-</style>
+<div class="error">
+	{{error}}
+</div>
 
-<html>
-	<body>
-		<div class="content">
-			<div class="phonity_title">
-				<span class="headline">Phonity</span>
-				<br>
-				<span class="tagline">-Never Save Another Business Card</span>
-			</div>
-			<form method="post">
-				<div class="phone_entry">
-					Mobile Phone Number:
-					<input type="text" name="phone_number" length="10">
-				</div> 
-				<div class="sign_up_container"><input class="sign_up" type="submit" value="Sign Up"></div>
-			</form>
-		</div>
-	</body>
-
-</html>
-
+{% endblock %}
