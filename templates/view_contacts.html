@@ -7,26 +7,30 @@
 		font-weight: bold;
 	}
 </style>
-<div style="max-width: 1000px; auto; margin: 0 auto;">
+<div style="max-width: 2000px; auto; margin: 0 auto;">
 <table valign="center">
 <tr>
-	<td class="header-row">full name-------------</td>
-	<td class="header-row">date connected--------</td>	
-	<td class="header-row">mobile phone----------</td>
-	<td class="header-row">linkedin profile------</td>
-	<td class="header-row">connection status-----</td>
-	<td class="header-row">change status---------</td>
+	<td class="header-row">full name--------------</td>
+	<td class="header-row">date connected---------</td>	
+	<td class="header-row">mobile phone-----------</td>
+	<td class="header-row">email------------------</td>
+	<td class="header-row">linkedin profile-------</td>
+	<td class="header-row">connection status------</td>
+	<td class="header-row">change status----------</td>
 </tr>
+{% for entry in contact_list %}
 <tr>
-	<td>Evan Valentini</td>
-	<td>2012.07.15</td>
-	<td>312.919.6341</td>
-	<td>
-		<a href="http://www.linkedin.com/profile/view?id=15837759&locale=en_US&trk=tyah">linkedin profile</a>
-	</td>
-	<td>self</td>
-	<td>n/a</td>
+	<td>{{ entry["name"] }}</td>
+	<td>{{ entry["date_connected"] }}</td>
+	<td>{{ entry["phone"] }}</td>
+	<td>{{ entry["email"] }}</td>
+	<td><a href="{{ entry["linkedin_url"] }}">linkedin</a></td>
+	<td>{{ entry["status"] }}</td>
+	{% autoescape false %}
+		<td>{{ entry["status_action"] }}</td>
+	{% endautoescape %}	
 </tr>
+{% endfor %}
 </table>
 </div>
 	

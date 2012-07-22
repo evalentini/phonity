@@ -3,9 +3,11 @@
 #imports#####################################################################################################
 #############################################################################################################
 
-#import data model 
+#import data model
+from data_model import DuplicatedInstanceError 
 from data_model import Users
 from data_model import Cards
+from data_model import Connections 
 
 #import library for sending SMS through google voice
 from voice import Voice
@@ -26,51 +28,9 @@ import sys
 #############################################################################################################
 
 template_dir=os.path.join(os.path.dirname(__file__), 'templates')
-jinja2_env=jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), autoescape=True)
+jinja2_env=jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), extensions=['jinja2.ext.autoescape'], autoescape=True)
+#extensions=['jinja2.ext.autoescape']
 
-##define error classes#######################################################################################
-#############################################################################################################
-
-#class DuplicatedInstanceError(Exception):
-#	def __init__(self, value):
-#		self.value=value 
-#	def __str__(self):
-#		return repr(self.value)
-
-
-##define database objects###################################################################################
-###########################################################################################################
-#class Users(db.Model):
-#	phone=db.IntegerProperty()
-#	pwd=db.StringProperty()
-#
-#	def put(self):
-#		if (not self.is_saved()) and (Users.gql('WHERE phone = :1', self.phone).count()>0):
-#			raise DuplicatedInstanceError (self.phone)
-#		db.Model.put(self)
-#
-#class Cards(db.Model):
-#	phone=db.IntegerProperty()
-#	email=db.StringProperty()
-#	name=db.StringProperty()
-#
-#	def put(self):
-#		if (not self.is_saved()) and (Cards.gql('WHERE phone = :1', self.phone).count()>0):
-#			raise DuplicatedInstanceError (self.phone)
-#		db.Model.put(self)
-#
-#class Connections(db.Model):
-#	user_phone=db.IntegerProperty()
-#	connection_phone=db.IntegerProperty()
-#	connection_status=db.StringProperty()	
-#	def put(self):
-#		user_phone=self.user_phone
-#		connection_phone=self.connection_phone
-#		query="WHERE user_phone = %s AND connection_phone = %s" %(user_phone, connection_phone)
-#		if (not self.is_saved()) and (Connections.gql(query).count()>0):
-#			raise DuplicatedInstanceError (self.phone)
-#		db.Model.put(self)
-#
 ##define helper functions###################################################################################
 ############################################################################################################
 
@@ -165,7 +125,6 @@ class Confirm(PageHandler):
 		self.response.out.write(render("confirm.html"))
 
 	def post(self):
-		self.response.out.write("hello")
 		#check for admin login 
 		nil=PageHandler.check_admin_login(self)
 		#check for phone 
@@ -182,8 +141,17 @@ class Confirm(PageHandler):
 			phone=self.request.cookies.get("phone")
 			phone=int(phone)
 			user=Users(phone=phone, pwd=pwd)
-			user.put()
-			self.redirect('/')
+			#try to add the user 
+			try:
+				user.put()
+				card=Cards(phone=phone)
+				card.put()
+				connection=Connections(user_phone=phone, connection_phone=phone, connection_status="self")
+				connection.put()
+				self.redirect('/')
+			except DuplicatedInstanceError:
+				error="you're already signed up.  click login (upper right) to login."
+				self.response.out.write(render("confirm.html", error=error))
 		else:
 			self.response.out.write(render("confirm.html"))
 			#add error message later
@@ -216,8 +184,7 @@ class AdminLogin(PageHandler):
 			self.redirect('/')
 		else:
 			self.response.out.write("invalid password")
-	
-
+		
 class Main(PageHandler):
 
 	def get(self):
@@ -226,17 +193,71 @@ class Main(PageHandler):
 		#check user login 
 		valid_login=PageHandler.check_user_login(self)
 		#render the main template
-		if valid_login==True:
-			self.response.out.write(render("main.html"))	
-			
-
-class ViewContacts(PageHandler):
+		if valid_login==True:	
+			#convert contact list to dictionary 
+			#create empty list 
+			contact_list=list()
+			#loop through connections table and pull data for every connection 
+			user_phone=self.request.cookies.get("phone")
+			query="SELECT * FROM Connections WHERE user_phone=%s" %user_phone
+			connections=db.GqlQuery(query)
+			#pull connection information 
+			for c in connections:
+				#temporary solution: add stubs for all the fields we want to show
+				entry={}
+				entry["name"]="stub"
+				entry["date_connected"]="stub"
+				entry["phone"]=c.connection_phone
+				entry["email"]="stub"
+				entry["linkedin_url"]="http://www.linkedin.com"
+				entry["status"]="stub"
+				entry["status_action"]="stub"
+				#add the date the connection was established 
+				if c.date_connected: entry["date_connected"]=c.date_connected
+				#check whether the connection status is requested (if so we dont want to display the connections info 
+				if c.connection_status=="requested":
+					entry["status"]="request sent"
+					status_action="""<a href="/delete_connection/%s"> remove</a>""" %c.connection_phone 
+					entry["status_action"]=status_action
+				else:
+					#if the connection is not pending approval then we can display everything
+					if c.connection_status=="nd_app":
+						#approval pending 
+						entry["status"]="wants to connect"
+						status_action="""<a href="/approve_connection/%s"> connect</a>""" %c.connection_phone
+						entry["status_action"]=status_action
+					if c.connection_status=="active":
+						#connection is active, action is to delete connection
+						entry["status"]="connected"
+						status_action="""<a href="/delete_connection/%s"> remove</a>""" %c.connection_phone 
+						entry["status_action"]=status_action
+					if c.connection_status=="self":
+						#this is the user.  Action is to edit card 
+						entry["status"]="this is you"
+						entry["status_action"]="""<a href="/edit_card">edit your card</a>"""
+					#now add the connections information from their card (if available)
+					query="SELECT * FROM Cards WHERE phone=%s" %c.connection_phone
+					connection_card=db.GqlQuery(query)
+					for card in connection_card:
+						if card.email: entry["email"]=card.email
+						if card.linkedin_url: entry["linkedin_url"]=card.linkedin_url
+						if card.name: entry["name"]=card.name	 
+				#add the entry to the contact list
+				contact_list.append(entry)
+			#draw the view contacts form 
+			self.response.out.write(render("view_contacts.html", contact_list=contact_list))	
+		else:
+			self.redirect('/login')	
 	
-	def get(self):
-		#check if logged in 
-		nil=PageHandler.check_admin_login(self)
-		#render the view_contact template 
-		self.response.out.write(render("view_contacts.html"))
+				
+
+#class ViewContacts(PageHandler):
+#	
+#	def get(self):
+#		#check if logged in 
+#		nil=PageHandler.check_admin_login(self)
+#		#render the view_contact template 
+#		self.response.out.write(render("view_contacts.html"))
 
 class AddContact(PageHandler):
 
@@ -246,7 +267,7 @@ class AddContact(PageHandler):
 		#check user login 
 		valid_login=PageHandler.check_user_login(self)
 		if valid_login==True:
-			#rendner the add_contact template
+			#render the add_contact template
 			self.response.out.write(render("add_contact.html"))
 
 	def post(self):
@@ -256,24 +277,35 @@ class AddContact(PageHandler):
 		valid_login=PageHandler.check_user_login(self)
 		if valid_login==True:
 			#check that we were provided with contact phone # and that it is valid phone #
-			contact_phone=self.request.get("contact_phone")
-			if contact_phone:
+			c_phone=self.request.get("contact_phone")
+			if c_phone:
 				PHONE_RE=re.compile(r'[0-9]{10}$')
-				if PHONE_RE.match(contact_phone):
+				if PHONE_RE.match(c_phone):
 					#add the phone # as a requested contact 
-					#INSERT CODE HERE
-					#we were given valid phone # and can now check if number exists on the site 
-					contact_phone=int(contact_phone)
-					query="SELECT * FROM Users WHERE phone = %s" %contact_phone
-					contact=db.GqlQuery(query)
-					if contact.count()>0:
-						#they exist and so we pass message saying connection request has been sent 
-						self.response.out.write(render("main.html", content_override="connection request sent"))
-					else:
-						#they dont exist so we pass to the InviteContact handler 
-						contact_phone=str(contact_phone)
-						redirect_str="invite_contact/%s" %contact_phone
-						self.redirect(redirect_str)
+					u_phone=self.request.cookies.get("phone")
+					#convert phone #s to integer 
+					c_phone=int(c_phone)
+					u_phone=int(u_phone)
+					try:
+						conn=Connections(user_phone=u_phone, connection_phone=c_phone, connection_status="requested")
+						conn.put()
+						#add a second connection request associated with the connection's phone #
+						conn2=Connections(user_phone=c_phone, connection_phone=u_phone, connection_status="nd_app")
+						conn2.put()
+						#we were given valid phone # and can now check if number exists on the site 
+						query="SELECT * FROM Users WHERE phone = %s" %c_phone
+						contact=db.GqlQuery(query)
+						if contact.count()>0:
+							#they exist and so we pass message saying connection request has been sent 
+							self.response.out.write(render("main.html", content_override="connection request sent"))
+						else:
+							#they dont exist so we pass to the InviteContact handler 
+							c_phone=str(c_phone)
+							redirect_str="invite_contact/%s" %c_phone
+							self.redirect(redirect_str)
+					except DuplicatedInstanceError:
+						error="you are already connected to %s" %c_phone
+						self.response.out.write(render("add_contact.html", error=error))
 				else:
 					self.response.out.write(render("add_contact.html", error="contact phone must be 10 digit number"))
 			else:
@@ -289,7 +321,7 @@ class EditCard(PageHandler):
 		card=db.GqlQuery(query)
 		if card.count()>0:
 			for c in card:
-				fields={'email': c.email, 'name': c.name}
+				fields={'email': c.email, 'linkedin_url': c.linkedin_url, 'name': c.name}
 				return fields
 		
 
@@ -305,18 +337,19 @@ class EditCard(PageHandler):
 			fields=self.pull_fields(phone)
 			if fields:
 				email=fields['email']
+				linkedin_url=fields['linkedin_url']
 				name=fields['name']
-				if not email:
-					email=""
-				if not name:
-					name=""
+				if not email: email=""
+				if not linkedin_url: linkedin_url=""
+				if not name: name=""
 			else:
 				email=""
+				linkedin_url=""
 				name=""
-			#rendner the add_contact template
+			#render the add_contact template
 			#add the login cookie
 			phone=self.request.cookies.get("phone")
-			self.response.out.write(render("edit_card.html", phone=phone, email=email, name=name))
+			self.response.out.write(render("edit_card.html", phone=phone, email=email, linkedin_url=linkedin_url, name=name))
 
 	def post(self):
 		#check admin login 
@@ -326,32 +359,91 @@ class EditCard(PageHandler):
 		if valid_login==True:
 			#store the linkedin email and name
 			email=self.request.get("email")
+			linkedin_url=self.request.get("linkedin_url")
 			name=self.request.get("name")
 			#pull the phone number cookie 
 			phone=self.request.cookies.get("phone")
 			#check that both exist
-			if not email or not phone or not name:
-				self.response.out.write(render("edit_card.html", error="invalid phone/email/name"))
-			else:
-				#pull old email if it exists 
-				phone=int(phone)
-				old_fields=self.pull_fields(phone)
-				if old_fields:
-					old_email=old_fields['email']
-					old_name=old_fields['name']
-					query="SELECT * FROM Cards WHERE phone=%s" %phone
-					card=db.GqlQuery(query)
+			#if not email or not phone or not name:
+			#	self.response.out.write(render("edit_card.html", error="invalid phone/email/name"))
+			#else:
+			#pull old email if it exists
+			if not email: email=""
+			if not linkedin_url: linkedin_url="http://www.linkedin.com"
+			if not name: name="" 
+			phone=int(phone)
+			old_fields=self.pull_fields(phone)
+			if old_fields:
+				old_email=old_fields['email']
+				old_linkedin_url=old_fields['linkedin_url']
+				old_name=old_fields['name']
+				query="SELECT * FROM Cards WHERE phone=%s" %phone
+				card=db.GqlQuery(query)
+				if card.count()>0:
 					for c in card:
 						c.email=email
+						c.linkedin_url=linkedin_url
 						c.name=name
 						db.put(c)	
 				#update if already exists 
 				#add data to the model
 				else:
-					card=Cards(phone=phone, email=email, name=name)
+					card=Cards(phone=phone, email=email, linkedin_url=linkedin_url,  name=name)
 					card.put()
 				self.response.out.write(render("main.html", content_override="update saved"))
 				 	
+
+class ApproveConnection(PageHandler):
+	def get(self, connection_phone):
+		#check admin login 
+		nil=PageHandler.check_admin_login(self)
+		#check user login 
+		valid_login=PageHandler.check_user_login(self)
+		if valid_login==True:
+			#get user phone and check whether connection status is pending approval from user 
+			user_phone=self.request.cookies.get("phone")
+			query="SELECT * FROM Connections WHERE user_phone=%s AND connection_phone=%s" %(user_phone, connection_phone)
+			#check whether connection status exists 
+			connection=db.GqlQuery(query)
+			if connection.count()>0:
+				for c in connection:
+					if c.connection_status=="nd_app":
+						c.connection_status="active"
+						db.put(c)
+				#redirect to the view contacts page
+				self.redirect('/view_contacts')	
+			else:	
+				self.response.out.write(query)
+		else:
+			self.redirect('/login') 
+
+class DeleteConnection(PageHandler):
+	def get(self, c_phone):
+		#check admin login 
+		nil=PageHandler.check_admin_login(self)
+		#check user login 
+		valid_login=PageHandler.check_user_login(self)
+		if valid_login==True:
+			#get user phone and delete connection entry if users are connected 
+			u_phone=self.request.cookies.get("phone")
+			#convert phone #s to integer
+			u_phone=int(u_phone)
+			c_phone=int(c_phone)
+			#check whether users are connected 
+			query="SELECT * FROM Connections WHERE user_phone=%s AND connection_phone=%s" %(u_phone, c_phone)
+			connection=db.GqlQuery(query)
+			if connection.count()>0:
+				db.delete(connection)
+				#delete the associated connection (between the logged in user and the connected user)
+				assoc_query="SELECT * FROM Connections WHERE user_phone=%s AND connection_phone=%s" %(c_phone, u_phone)
+				assoc_connection=db.GqlQuery(assoc_query)
+				db.delete(assoc_connection)
+				#redirect to the view contacts page
+				self.redirect('/view_contacts')
+			else:
+				self.response.out.write(query)
+		else:
+			self.redirect('/login')
 
 class InviteContact(PageHandler):
 	def get(self, contact_phone):
@@ -368,6 +460,7 @@ class InviteContact(PageHandler):
 		#check user login
 		valid_login=PageHandler.check_user_login(self)
 		if valid_login==True:
+			#fix message below so that person's name shows up 
 			invite_message="you have been invited to join phonity.  go to phonity.appspot.com to join." 
 			nil=text(invite_message, contact_phone) 
 			self.response.out.write(render("main.html", content_override="invitation sent"))
@@ -387,24 +480,48 @@ class Logout(PageHandler):
 		self.response.set_cookie("phone", "")
 		self.response.out.write(render("login.html", error="you are now logged out.  log back in above."))
 
-class Test(PageHandler):
-
+class Cancel(PageHandler):
+	
 	def get(self):
-		self.response.out.write(tester())
+		#check admin login 
+		nil=PageHandler.check_admin_login(self)
+		#check user login 
+		valid_login=PageHandler.check_user_login(self)
+		if valid_login==True:
+			phone=self.request.cookies.get("phone")
+			#delete all the information in database tables attached to user
+			#in the Users table 
+			query="SELECT * FROM Users WHERE phone=%s" %phone
+			user=db.GqlQuery(query)
+			db.delete(user)
+			#in the Cards table 
+			query="SELECT * FROM Cards WHERE phone=%s" %phone 
+			card=db.GqlQuery(query)
+			db.delete(card)
+			#in the Connections table
+			query="SELECT * FROM Connections WHERE user_phone=%s" %phone
+			connections=db.GqlQuery(query)
+			db.delete(connections)
+			self.response.out.write(render("cancel.html")) 	
+				
+		else:
+			self.redirect('/login')
 
 app=webapp2.WSGIApplication([('/', Main),
 				('/admin_login', AdminLogin),
 				('/signup', Signup),
 				('/confirm', Confirm),
 				('/login', Login),
-				('/view_contacts', ViewContacts),
+				('/view_contacts', Main),
 				('/add_contact', AddContact),
 				('/edit_card', EditCard),
+				('/delete_connection/([0-9]{10}$)', DeleteConnection),
+				('/approve_connection/([0-9]{10}$)', ApproveConnection),
 				('/invite_contact/([0-9]{10}$)', InviteContact),
 				('/main.css', GetCSS),
 				('/invite_contact/main.css', GetCSS),
 				('/logout', Logout),
-				('/test', Test)
+				('/cancel', Cancel)
 				], debug=True)
 
 
